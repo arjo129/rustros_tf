@@ -1,0 +1,16 @@
+[package]
+name = "rustros_tf"
+version = "0.1.0"
+authors = ["Arjo Chakravarty <arjo129@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib"]
+bench = false
+
+[dependencies]
+rosrust = "0.9"
+rosrust_msg = "0.1"
+ndarray = "0.13.1"
+ndarray-linalg = { version = "0.12", features = ["netlib"] }
