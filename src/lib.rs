@@ -373,7 +373,7 @@ mod test {
                     x: 0f64, y: 0f64, z: 0f64, w: 1f64
                 },
                 translation: msg::geometry_msgs::Vector3{
-                    x: 0.5f64, y: 0.5f64, z: 0f64
+                    x: 0.5f64, y: 0f64, z: 0f64
                 }
             }
         };

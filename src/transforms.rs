@@ -3,8 +3,8 @@ use ndarray::prelude::*;
 use ndarray::arr2;
 use ndarray_linalg::trace::Trace;
 use ndarray_linalg::solve::Inverse;
+use nalgebra::geometry;
 
-mod se3_eigen_vals;
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Quaternion {
@@ -116,6 +116,52 @@ pub fn chain_transforms(transforms: &Vec<Transform>) -> Transform {
     transform_from_se3(&final_transform)
 }
 
+pub fn interpolate(t1: Transform, t2: Transform, weight: f64) -> Transform {
+    let r1 = geometry::Quaternion::new(t1.orientation.x, t1.orientation.y, t1.orientation.z, t1.orientation.w);
+    let r2 = geometry::Quaternion::new(t2.orientation.x, t2.orientation.y, t2.orientation.z, t2.orientation.w);
+    let r1 = geometry::UnitQuaternion::from_quaternion(r1);
+    let r2 = geometry::UnitQuaternion::from_quaternion(r2);
+    let res  = r1.try_slerp(&r2, weight, 1e-9);
+    match res {
+        Some(qt) => {
+            Transform{
+                position: Position {
+                    x: t1.position.x * weight + t2.position.x * (1.0 - weight),
+                    y: t1.position.y * weight + t2.position.y * (1.0 - weight),
+                    z: t1.position.z * weight + t2.position.z * (1.0 - weight) 
+                },
+                orientation: Quaternion {
+                    x: qt.coords[0],
+                    y: qt.coords[1],
+                    z: qt.coords[2],
+                    w: qt.coords[3]
+                }
+            } 
+        }
+        None => {
+            if weight > 0.5 {
+                Transform{
+                    position: Position {
+                        x: t1.position.x * weight + t2.position.x * (1.0 - weight),
+                        y: t1.position.y * weight + t2.position.y * (1.0 - weight),
+                        z: t1.position.z * weight + t2.position.z * (1.0 - weight) 
+                    },
+                    orientation: t1.orientation.clone()
+                }
+            }
+            else {
+                Transform{
+                    position: Position {
+                        x: t1.position.x * weight + t2.position.x * (1.0 - weight),
+                        y: t1.position.y * weight + t2.position.y * (1.0 - weight),
+                        z: t1.position.z * weight + t2.position.z * (1.0 - weight) 
+                    },
+                    orientation: t2.orientation.clone()
+                }
+            }
+        } 
+    }
+}
 
 #[cfg(test)]
 mod test {
