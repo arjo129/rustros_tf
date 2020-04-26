@@ -58,8 +58,48 @@ fn get_inverse(transform: &msg::geometry_msgs::TransformStamped) -> msg::geometr
 
 #[derive(Clone, Debug)]
 pub enum TfError {
+    AttemptedLookupInPast,
     AttemptedLookUpInFuture,
     CouldNotFindTransform
+}
+
+fn to_transform(transform: msg::geometry_msgs::TransformStamped) -> transforms::Transform {
+    transforms::Transform {
+        orientation: transforms::Quaternion{
+            x: transform.transform.rotation.x,
+            y: transform.transform.rotation.y,
+            z: transform.transform.rotation.z,
+            w: transform.transform.rotation.x,
+        },
+        position: transforms::Position{
+            x: transform.transform.translation.x,
+            y: transform.transform.translation.y,
+            z: transform.transform.translation.z
+        }
+    }
+}
+
+fn to_transform_stamped(transform: transforms::Transform, from: std::string::String, to: std::string::String, time: rosrust::Time) -> msg::geometry_msgs::TransformStamped {
+    msg::geometry_msgs::TransformStamped {
+        child_frame_id: to.clone(),
+        header: msg::std_msgs::Header {
+            frame_id: from.clone(),
+            stamp: time,
+            seq: 0
+        },
+        transform: msg::geometry_msgs::Transform{
+            rotation: msg::geometry_msgs::Quaternion{
+                x: transform.orientation.x, y:transform.orientation.y, z: transform.orientation.z, w: transform.orientation.w
+            },
+            translation: msg::geometry_msgs::Vector3{
+                x: transform.position.x, y: transform.position.y, z: transform.position.z
+            }
+        }
+    }
+}
+
+fn get_nanos(dur: rosrust::Duration) -> i64 {
+    i64::from(dur.sec) * 1_000_000_000 + i64::from(dur.nsec)
 }
 
 #[derive(Clone, Debug)] 
@@ -115,7 +155,26 @@ impl TfIndividualTransformChain {
         let res = self.transform_chain.binary_search(&res);
         match res {
             Ok(x)=> return Ok(self.transform_chain.get(x).unwrap().clone()),
-            Err(x)=> return Err(TfError::AttemptedLookUpInFuture)
+            Err(x)=> {
+                if x == 0 {
+                    return Err(TfError::AttemptedLookupInPast);
+                }
+                if x >= self.transform_chain.len() {
+                    return Err(TfError::AttemptedLookUpInFuture)
+                }
+                let tf1 = to_transform(self.transform_chain.get(x-1).unwrap().clone());
+                let tf2 = to_transform(self.transform_chain.get(x).unwrap().clone());
+                let time1 = self.transform_chain.get(x-1).unwrap().header.stamp;
+                let time2 = self.transform_chain.get(x).unwrap().header.stamp;
+                let header = self.transform_chain.get(x).unwrap().header.clone();
+                let child_frame = self.transform_chain.get(x).unwrap().child_frame_id.clone();
+                let total_duration = get_nanos(time2 - time1) as f64;
+                let desired_duration = get_nanos(time - time1) as f64;
+                let weight = desired_duration/total_duration;
+                let final_tf = transforms::interpolate(tf1, tf2, weight);
+                let ros_msg = to_transform_stamped(final_tf, header.frame_id, child_frame, time);
+                Ok(ros_msg)
+            }
         }
     }
 }  

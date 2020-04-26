@@ -117,8 +117,8 @@ pub fn chain_transforms(transforms: &Vec<Transform>) -> Transform {
 }
 
 pub fn interpolate(t1: Transform, t2: Transform, weight: f64) -> Transform {
-    let r1 = geometry::Quaternion::new(t1.orientation.x, t1.orientation.y, t1.orientation.z, t1.orientation.w);
-    let r2 = geometry::Quaternion::new(t2.orientation.x, t2.orientation.y, t2.orientation.z, t2.orientation.w);
+    let r1 = geometry::Quaternion::new(t1.orientation.w, t1.orientation.x, t1.orientation.y, t1.orientation.z);
+    let r2 = geometry::Quaternion::new(t2.orientation.w, t2.orientation.x, t2.orientation.y, t2.orientation.z);
     let r1 = geometry::UnitQuaternion::from_quaternion(r1);
     let r2 = geometry::UnitQuaternion::from_quaternion(r2);
     let res  = r1.try_slerp(&r2, weight, 1e-9);
@@ -234,4 +234,20 @@ mod test {
         assert_eq!(res, expected_tf);
     }
 
+    #[test]
+    fn test_basic_interpolation() {
+        let tf1 = Transform {
+            position: Position{x: 1f64, y: 1f64, z: 0f64},
+            orientation: Quaternion{x: 0f64, y: 0f64, z: 0f64, w: 1f64}
+        };
+        let tf2 = Transform {
+            position: Position{x: 2f64, y: 2f64, z: 0f64},
+            orientation: Quaternion{x: 0f64, y: 0f64, z: 0f64, w: 1f64}
+        };
+        let expected = Transform {
+            position: Position{x: 1.5f64, y: 1.5f64, z: 0f64},
+            orientation: Quaternion{x: 0f64, y: 0f64, z: 0f64, w: 1f64}
+        };
+        assert_eq!(interpolate(tf1, tf2, 0.5), expected);
+    }
 }
