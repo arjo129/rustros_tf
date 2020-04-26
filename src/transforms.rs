@@ -71,10 +71,10 @@ pub fn quaternion_from_transform_matrix(a: &Array2<f64>) ->  Quaternion {
 /// Converts a quaternion to an SE3 matrix
 pub fn transform_matrix_from_quaternion(msg: &Quaternion) ->  Array2<f64> {
     let s  = (msg.x*msg.x+ msg.y*msg.y + msg.z*msg.z + msg.w*msg.w).sqrt();
-    let mut a =  arr2(&[[1f64 - 2f64*s*(msg.y*msg.y + msg.z*msg.z), 2f64*s*(msg.x*msg.y - msg.z*msg.w), 2f64*s*(msg.x*msg.z + msg.y*msg.w), 0f64],
-                        [2f64*s*(msg.x*msg.y - msg.w*msg.z), 1f64 - 2f64*s*(msg.x*msg.x + msg.z*msg.z), 2f64*s*(msg.y*msg.z + msg.w*msg.x), 0f64],
-                        [2f64*s*(msg.x*msg.z+ msg.w*msg.y), 2f64*s*(msg.y*msg.z-msg.w*msg.x), 1f64 - 2f64*s*(msg.x*msg.x + msg.y*msg.y), 0f64],
-                        [0f64, 0f64, 0f64, 1f64]]);
+    let a =  arr2(&[[1f64 - 2f64*s*(msg.y*msg.y + msg.z*msg.z), 2f64*s*(msg.x*msg.y - msg.z*msg.w), 2f64*s*(msg.x*msg.z + msg.y*msg.w), 0f64],
+                    [2f64*s*(msg.x*msg.y - msg.w*msg.z), 1f64 - 2f64*s*(msg.x*msg.x + msg.z*msg.z), 2f64*s*(msg.y*msg.z + msg.w*msg.x), 0f64],
+                    [2f64*s*(msg.x*msg.z+ msg.w*msg.y), 2f64*s*(msg.y*msg.z-msg.w*msg.x), 1f64 - 2f64*s*(msg.x*msg.x + msg.y*msg.y), 0f64],
+                    [0f64, 0f64, 0f64, 1f64]]);
     a
 }
 
