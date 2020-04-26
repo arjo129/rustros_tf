@@ -57,7 +57,7 @@ fn get_inverse(transform: &msg::geometry_msgs::TransformStamped) -> msg::geometr
 }
 
 #[derive(Clone, Debug)]
-enum TfError {
+pub enum TfError {
     AttemptedLookUpInFuture,
     CouldNotFindTransform
 }
@@ -120,7 +120,7 @@ impl TfIndividualTransformChain {
     }
 }  
 
-#[derive(Clone,Debug,Hash)]
+#[derive(Clone,Debug,Hash)] 
 struct TfGraphNode {
     child: String,
     parent: String
@@ -225,6 +225,7 @@ impl TfBuffer {
         Ok(res)
     }
 
+    /// Looks up a transform within the tree at a given time.
     pub fn lookup_transform(&self, from: &str, to: &str, time: rosrust::Time) -> Result<msg::geometry_msgs::TransformStamped,TfError> {
         let from = from.to_string();
         let to = to.to_string();
@@ -323,10 +324,10 @@ mod test {
             },
             transform: msg::geometry_msgs::Transform{
                 rotation: msg::geometry_msgs::Quaternion{
-                    x: 0f64, y: time, z: 0f64, w: 1f64
+                    x: 0f64, y: 0f64, z: 0f64, w: 1f64
                 },
                 translation: msg::geometry_msgs::Vector3{
-                    x: time, y: 0f64, z: 0f64
+                    x: 0f64, y: time, z: 0f64
                 }
            }
         };
@@ -353,8 +354,35 @@ mod test {
         buffer.add_transform(&get_inverse(&base_link_to_camera), true);
     }
 
+
+    /// Tests a basic lookup
     #[test]
     fn test_basic_tf_lookup() {
+        let mut tf_buffer = TfBuffer::new();
+        build_test_tree(&mut tf_buffer, 0f64);
+        let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time{sec:0, nsec:0});
+        let expected = msg::geometry_msgs::TransformStamped {
+            child_frame_id: "item".to_string(),
+            header: msg::std_msgs::Header {
+                frame_id: "camera".to_string(), 
+                stamp: rosrust::Time{sec:0, nsec:0},
+                seq: 1
+            },
+            transform: msg::geometry_msgs::Transform{
+                rotation: msg::geometry_msgs::Quaternion{
+                    x: 0f64, y: 0f64, z: 0f64, w: 1f64
+                },
+                translation: msg::geometry_msgs::Vector3{
+                    x: 0.5f64, y: 0.5f64, z: 0f64
+                }
+            }
+        };
+        assert_eq!(res.unwrap(), expected);
+    }
+
+    /// Tests an interpolated lookup. 
+    #[test]
+    fn test_basic_tf_interpolation() {
         let mut tf_buffer = TfBuffer::new();
         build_test_tree(&mut tf_buffer, 0f64);
         let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time{sec:0, nsec:0});

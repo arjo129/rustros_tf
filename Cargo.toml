@@ -3,6 +3,7 @@ name = "rustros_tf"
 version = "0.1.0"
 authors = ["Arjo Chakravarty <arjo129@gmail.com>"]
 edition = "2018"
+description = "This is a rust port of the [ROS tf library](http://wiki.ros.org/tf). It is intended for being used in robots to help keep track of multiple coordinate frames and is part of a larger suite of rust libraries that provide support for various robotics related functionality."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -14,3 +15,4 @@ rosrust = "0.9"
 rosrust_msg = "0.1"
 ndarray = "0.13.1"
 ndarray-linalg = { version = "0.12", features = ["netlib"] }
+nalgebra = "0.20"

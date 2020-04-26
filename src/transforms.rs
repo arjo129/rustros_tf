@@ -1,9 +1,10 @@
 
-
 use ndarray::prelude::*;
 use ndarray::arr2;
 use ndarray_linalg::trace::Trace;
 use ndarray_linalg::solve::Inverse;
+
+mod se3_eigen_vals;
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Quaternion {
@@ -114,6 +115,7 @@ pub fn chain_transforms(transforms: &Vec<Transform>) -> Transform {
     } 
     transform_from_se3(&final_transform)
 }
+
 
 #[cfg(test)]
 mod test {
