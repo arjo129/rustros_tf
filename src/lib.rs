@@ -69,7 +69,7 @@ fn to_transform(transform: msg::geometry_msgs::TransformStamped) -> transforms::
             x: transform.transform.rotation.x,
             y: transform.transform.rotation.y,
             z: transform.transform.rotation.z,
-            w: transform.transform.rotation.x,
+            w: transform.transform.rotation.w,
         },
         position: transforms::Position{
             x: transform.transform.translation.x,
@@ -217,12 +217,12 @@ impl TfBuffer {
     fn add_transform (&mut self, transform: &msg::geometry_msgs::TransformStamped, static_tf: bool) {
         //TODO: Detect is new transform will create a loop
         if self.child_transform_index.contains_key(&transform.header.frame_id) {
-            let mut res = self.child_transform_index.get_mut(&transform.header.frame_id.clone()).unwrap();
+            let res = self.child_transform_index.get_mut(&transform.header.frame_id.clone()).unwrap();
             res.insert(transform.child_frame_id.clone());
         }
         else {
             self.child_transform_index.insert(transform.header.frame_id.clone(), HashSet::new());
-            let mut res = self.child_transform_index.get_mut(&transform.header.frame_id.clone()).unwrap();
+            let res = self.child_transform_index.get_mut(&transform.header.frame_id.clone()).unwrap();
             res.insert(transform.child_frame_id.clone());
         }
         
@@ -444,12 +444,13 @@ mod test {
     fn test_basic_tf_interpolation() {
         let mut tf_buffer = TfBuffer::new();
         build_test_tree(&mut tf_buffer, 0f64);
-        let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time{sec:0, nsec:0});
+        build_test_tree(&mut tf_buffer, 1f64);
+        let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time{sec:0, nsec:500_000_000});
         let expected = msg::geometry_msgs::TransformStamped {
             child_frame_id: "item".to_string(),
             header: msg::std_msgs::Header {
                 frame_id: "camera".to_string(), 
-                stamp: rosrust::Time{sec:0, nsec:0},
+                stamp: rosrust::Time{sec:0, nsec:500_000_000},
                 seq: 1
             },
             transform: msg::geometry_msgs::Transform{
@@ -457,7 +458,7 @@ mod test {
                     x: 0f64, y: 0f64, z: 0f64, w: 1f64
                 },
                 translation: msg::geometry_msgs::Vector3{
-                    x: 0.5f64, y: 0f64, z: 0f64
+                    x: 0.5f64, y: -0.5f64, z: 0f64
                 }
             }
         };
