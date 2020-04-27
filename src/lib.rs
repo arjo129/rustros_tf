@@ -19,6 +19,7 @@ impl PartialOrd for msg::geometry_msgs::TransformStamped {
     }
 }
 
+/// Calculates the inverse of a ros transform
 fn get_inverse(transform: &msg::geometry_msgs::TransformStamped) -> msg::geometry_msgs::TransformStamped {
     
     let m_transform = transforms::Transform {
@@ -56,12 +57,17 @@ fn get_inverse(transform: &msg::geometry_msgs::TransformStamped) -> msg::geometr
     inv
 }
 
+/// Enumerates the different types of errors
 #[derive(Clone, Debug)]
 pub enum TfError {
-    AttemptedLookupInPast,
-    AttemptedLookUpInFuture,
+    /// Error due to looking up too far in the past. I.E the information is no longer available in the TF Cache.
+    AttemptedLookupInPast, 
+    /// Error due ti the transform not yet being available.
+    AttemptedLookUpInFuture, 
+    /// There is no path between the from and to frame.
     CouldNotFindTransform
 }
+
 
 fn to_transform(transform: msg::geometry_msgs::TransformStamped) -> transforms::Transform {
     transforms::Transform {
@@ -239,6 +245,7 @@ impl TfBuffer {
         }
     }
  
+    /// Retrieves the transform path
     fn retrieve_transform_path(&self, from: String, to: String) -> Result<Vec<String>, TfError> {
         let mut res = vec!();
         let mut frontier: VecDeque<String> = VecDeque::new();
