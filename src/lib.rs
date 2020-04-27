@@ -170,7 +170,7 @@ impl TfIndividualTransformChain {
                 let child_frame = self.transform_chain.get(x).unwrap().child_frame_id.clone();
                 let total_duration = get_nanos(time2 - time1) as f64;
                 let desired_duration = get_nanos(time - time1) as f64;
-                let weight = desired_duration/total_duration;
+                let weight = 1.0 - desired_duration/total_duration;
                 let final_tf = transforms::interpolate(tf1, tf2, weight);
                 let ros_msg = to_transform_stamped(final_tf, header.frame_id, child_frame, time);
                 Ok(ros_msg)
@@ -445,12 +445,12 @@ mod test {
         let mut tf_buffer = TfBuffer::new();
         build_test_tree(&mut tf_buffer, 0f64);
         build_test_tree(&mut tf_buffer, 1f64);
-        let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time{sec:0, nsec:500_000_000});
+        let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time{sec:0, nsec:700_000_000});
         let expected = msg::geometry_msgs::TransformStamped {
             child_frame_id: "item".to_string(),
             header: msg::std_msgs::Header {
                 frame_id: "camera".to_string(), 
-                stamp: rosrust::Time{sec:0, nsec:500_000_000},
+                stamp: rosrust::Time{sec:0, nsec:700_000_000},
                 seq: 1
             },
             transform: msg::geometry_msgs::Transform{
@@ -458,7 +458,7 @@ mod test {
                     x: 0f64, y: 0f64, z: 0f64, w: 1f64
                 },
                 translation: msg::geometry_msgs::Vector3{
-                    x: 0.5f64, y: -0.5f64, z: 0f64
+                    x: 0.5f64, y: -0.7f64, z: 0f64
                 }
             }
         };
