@@ -1,9 +1,13 @@
+//! This is a rust port of the [ROS tf library](http://wiki.ros.org/tf). It is intended for being used in robots to help keep track of 
+//! multiple coordinate frames and is part of a larger suite of rust libraries that provide support for various robotics related functionality.
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::collections::HashSet; 
 use std::cmp::Ordering;
+use std::sync::{Arc, RwLock};
+
 pub mod msg;
-pub mod transforms;
+mod transforms;
 
 impl Eq for msg::geometry_msgs::TransformStamped {}
 
@@ -20,22 +24,9 @@ impl PartialOrd for msg::geometry_msgs::TransformStamped {
 }
 
 /// Calculates the inverse of a ros transform
-fn get_inverse(transform: &msg::geometry_msgs::TransformStamped) -> msg::geometry_msgs::TransformStamped {
+pub fn get_inverse(transform: &msg::geometry_msgs::TransformStamped) -> msg::geometry_msgs::TransformStamped {
     
-    let m_transform = transforms::Transform {
-        orientation: transforms::Quaternion{
-            x: transform.transform.rotation.x,
-            y: transform.transform.rotation.y,
-            z: transform.transform.rotation.z,
-            w: transform.transform.rotation.x,
-        },
-        position: transforms::Position{
-            x: transform.transform.translation.x,
-            y: transform.transform.translation.y,
-            z: transform.transform.translation.z
-        }
-    };
-
+    let m_transform = to_transform(transform);
     let inverse = transforms::invert_transform(&m_transform);
 
     let inv: msg::geometry_msgs::TransformStamped = msg::geometry_msgs::TransformStamped {
@@ -65,11 +56,13 @@ pub enum TfError {
     /// Error due ti the transform not yet being available.
     AttemptedLookUpInFuture, 
     /// There is no path between the from and to frame.
-    CouldNotFindTransform
+    CouldNotFindTransform,
+    /// In the event that a write is simultaneously happening with a read of the same tf buffer
+    CouldNotAcquireLock
 }
 
 
-fn to_transform(transform: msg::geometry_msgs::TransformStamped) -> transforms::Transform {
+fn to_transform(transform: &msg::geometry_msgs::TransformStamped) -> transforms::Transform {
     transforms::Transform {
         orientation: transforms::Quaternion{
             x: transform.transform.rotation.x,
@@ -168,8 +161,8 @@ impl TfIndividualTransformChain {
                 if x >= self.transform_chain.len() {
                     return Err(TfError::AttemptedLookUpInFuture)
                 }
-                let tf1 = to_transform(self.transform_chain.get(x-1).unwrap().clone());
-                let tf2 = to_transform(self.transform_chain.get(x).unwrap().clone());
+                let tf1 = to_transform(&self.transform_chain.get(x-1).unwrap().clone());
+                let tf2 = to_transform(&self.transform_chain.get(x).unwrap().clone());
                 let time1 = self.transform_chain.get(x-1).unwrap().header.stamp;
                 let time2 = self.transform_chain.get(x).unwrap().header.stamp;
                 let header = self.transform_chain.get(x).unwrap().header.clone();
@@ -200,7 +193,7 @@ impl PartialEq for TfGraphNode {
 impl Eq for TfGraphNode {}
 
 #[derive(Clone, Debug)]
-pub struct TfBuffer {
+struct TfBuffer {
     child_transform_index: HashMap<String, HashSet<String> >,
     transform_data: HashMap<TfGraphNode, TfIndividualTransformChain>
 }
@@ -214,7 +207,6 @@ impl TfBuffer {
 
     fn handle_incoming_transforms(&mut self, transforms: msg::tf2_msgs::TFMessage, static_tf: bool) {
         for transform in transforms.transforms {
-            println!("Got transform {} {:?}-> {}", transform.header.frame_id, transform.header.stamp, transform.child_frame_id);
             self.add_transform(&transform, static_tf);
             self.add_transform(&get_inverse(&transform), static_tf);
         }
@@ -348,6 +340,12 @@ impl TfBuffer {
             Err(x) => return Err(x)
         }; 
     }
+
+    fn lookup_transform_with_time_travel(&self, from: &str, time1: rosrust::Time, to: &str, time2: rosrust::Time, fixed_frame: &str) ->  Result<msg::geometry_msgs::TransformStamped,TfError> {
+        let tf1 = self.lookup_transform(from, fixed_frame, time1);
+        let tf2 = self.lookup_transform(to, fixed_frame, time2);
+        tf2
+    }
 }
 
 #[cfg(test)]
@@ -474,25 +472,60 @@ mod test {
 
 }
 
-/*
-fn main() {
-       // Initialize node
-       rosrust::init("listener");
-
-       // Create subscriber
-       // The subscriber is stopped when the returned object is destroyed
-       let _subscriber_tf = rosrust::subscribe("tf", 100, |v: msg::tf2_msgs::TFMessage| {
-           
-       }).unwrap();
-
-       let _subscriber_tf_static = rosrust::subscribe("tf_static", 100, |v: msg::tf2_msgs::TFMessage| {
-           let mut buffer = TfBuffer::new();
-           buffer.handle_incoming_transforms(v, true);
-           println!("");
-           println!("{:?}" , buffer.retrieve_transform_path("front_cam".to_string(), "sonar".to_string()));
-       }).unwrap();
-
-       // Block the thread until a shutdown signal is received
-       rosrust::spin();
+///This class tries to be the same as the C++ version of `TfListener`. Use this class to lookup transforms.
+/// 
+/// Example usage:
+/// 
+/// ```
+/// fn main() {
+///     rosrust::init("listener");
+///     let listener = TfListener::new();
+///     
+///     let rate = rosrust::rate(1.0);
+///     while rosrust::is_ok() {
+///         let tf = listener.lookup_transform("camera", "base_link", ros::Time::now());
+///         println("{:?}", tf);
+///         rate.sleep();
+///     }
+/// }
+/// ```
+/// Do note that unlike the C++ variant of the TfListener, 
+pub struct TfListener {
+    buffer: Arc<RwLock<TfBuffer>>,
+    static_subscriber: rosrust::Subscriber,
+    dynamic_subscriber:  rosrust::Subscriber, 
 }
-*/
+
+impl TfListener {
+
+    /// Create a new TfListener
+    pub fn new() -> Self {
+        let buff = RwLock::new(TfBuffer::new());
+        let arc = Arc::new(buff);
+        let r1 = arc.clone();
+        let _subscriber_tf = rosrust::subscribe("tf", 100, move |v: msg::tf2_msgs::TFMessage| {
+            r1.write().unwrap().handle_incoming_transforms(v, true);
+        }).unwrap();
+
+        let r2 = arc.clone();
+        let _subscriber_tf_static = rosrust::subscribe("tf_static", 100, move |v: msg::tf2_msgs::TFMessage| {
+            r2.write().unwrap().handle_incoming_transforms(v, true);
+        }).unwrap();
+        
+        TfListener {
+            buffer: arc.clone(),
+            static_subscriber: _subscriber_tf_static,
+            dynamic_subscriber: _subscriber_tf
+        }
+    }
+
+    /// Looks up a transform within the tree at a given time.
+    pub fn lookup_transform(&self, from: &str, to: &str, time: rosrust::Time) ->  Result<msg::geometry_msgs::TransformStamped,TfError> {
+        self.buffer.read().unwrap().lookup_transform(from, to, time)
+    }
+
+    /// Looks up a transform within the tree at a given time.
+    pub fn lookup_transform_with_time_travel(&self, from: &str, time1: rosrust::Time, to: &str, time2: rosrust::Time, fixed_frame: &str) ->  Result<msg::geometry_msgs::TransformStamped,TfError> {
+        self.buffer.read().unwrap().lookup_transform_with_time_travel(from, time1, to, time2, fixed_frame)
+    }
+}
