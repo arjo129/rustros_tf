@@ -476,7 +476,7 @@ mod test {
 /// 
 /// Example usage:
 /// 
-/// ```
+/// ```ignore
 /// fn main() {
 ///     rosrust::init("listener");
 ///     let listener = TfListener::new();
@@ -484,7 +484,7 @@ mod test {
 ///     let rate = rosrust::rate(1.0);
 ///     while rosrust::is_ok() {
 ///         let tf = listener.lookup_transform("camera", "base_link", ros::Time::now());
-///         println("{:?}", tf);
+///         println!("{:?}", tf);
 ///         rate.sleep();
 ///     }
 /// }
