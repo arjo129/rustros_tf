@@ -9,6 +9,7 @@ keywords = ["transforms", "robotics", "ROS", "tf"]
 readme = "readme.md"
 documentation = "https://arjo129.github.io/rustros_tf/rustros_tf/index.html"
 repository = "https://github.com/arjo129/rustros_tf"
+homepage = "https://github.com/arjo129/rustros_tf"
 
 [lib]
 crate-type = ["lib"]
