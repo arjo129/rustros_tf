@@ -25,6 +25,10 @@ curl -sSL 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0xC1CF6E31E6BADE
 sudo apt update
 sudo apt install ros-melodic-desktop
 ```
+You will also need a fortran compiler.
+```
+sudo apt install gfortran
+```
 After installing ROS, you may simply add this crate as a dependency to your cargo project:
 ```
 [dependencies]
