@@ -341,10 +341,16 @@ impl TfBuffer {
         }; 
     }
 
-    fn lookup_transform_with_time_travel(&self, from: &str, time1: rosrust::Time, to: &str, time2: rosrust::Time, fixed_frame: &str) ->  Result<msg::geometry_msgs::TransformStamped,TfError> {
+    fn lookup_transform_with_time_travel(&self, to: &str, time2: rosrust::Time,from: &str, time1: rosrust::Time,  fixed_frame: &str) ->  Result<msg::geometry_msgs::TransformStamped,TfError> {
         let tf1 = self.lookup_transform(from, fixed_frame, time1);
         let tf2 = self.lookup_transform(to, fixed_frame, time2);
-        tf2
+        match tf1 {Err(x) => return Err(x), Ok(_)=>{}}
+        let tf1 = to_transform(&tf1.unwrap());
+        match tf2 {Err(x) => return Err(x), Ok(_)=>{}}
+        let tf2 = to_transform(&tf2.unwrap());
+        let transforms = transforms::invert_transform(&tf1);
+        let result = transforms::chain_transforms(&vec!(tf2, transforms));
+        Ok(to_transform_stamped(result, from.to_string(), to.to_string(), time1))
     }
 }
 
@@ -470,9 +476,48 @@ mod test {
         assert_eq!(res.unwrap(), expected);
     }
 
+    /// Tests an interpolated lookup. 
+    #[test]
+    fn test_basic_tf_timetravel() {
+        let mut tf_buffer = TfBuffer::new();
+        build_test_tree(&mut tf_buffer, 0f64);
+        build_test_tree(&mut tf_buffer, 1f64);
+        let res = tf_buffer.lookup_transform_with_time_travel("camera", rosrust::Time{sec:0, nsec: 400_000_000}, "camera", rosrust::Time{sec:0, nsec: 700_000_000}, "item");
+        let expected = msg::geometry_msgs::TransformStamped {
+            child_frame_id: "camera".to_string(),
+            header: msg::std_msgs::Header {
+                frame_id: "camera".to_string(), 
+                stamp: rosrust::Time{sec:0, nsec:700_000_000},
+                seq: 0
+            },
+            transform: msg::geometry_msgs::Transform{
+                rotation: msg::geometry_msgs::Quaternion{
+                    x: 0f64, y: 0f64, z: 0f64, w: 1f64
+                },
+                translation: msg::geometry_msgs::Vector3{
+                    x: 0f64, y: 0.3f64, z: 0f64
+                }
+            }
+        };
+        assert_approx_eq(res.unwrap(), expected);
+    }
+
+    fn assert_approx_eq(msg1: msg::geometry_msgs::TransformStamped, msg2: msg::geometry_msgs::TransformStamped) {
+        assert_eq!(msg1.header, msg2.header);
+        assert_eq!(msg1.child_frame_id, msg2.child_frame_id);
+
+        assert!((msg1.transform.rotation.x - msg2.transform.rotation.x).abs() < 1e-9);
+        assert!((msg1.transform.rotation.y - msg2.transform.rotation.y).abs() < 1e-9);
+        assert!((msg1.transform.rotation.z - msg2.transform.rotation.z).abs() < 1e-9);
+        assert!((msg1.transform.rotation.w - msg2.transform.rotation.w).abs() < 1e-9);
+
+        assert!((msg1.transform.translation.x - msg2.transform.translation.x).abs() < 1e-9);
+        assert!((msg1.transform.translation.y - msg2.transform.translation.y).abs() < 1e-9);
+        assert!((msg1.transform.translation.z - msg2.transform.translation.z).abs() < 1e-9);
+    }
 }
 
-///This class tries to be the same as the C++ version of `TfListener`. Use this class to lookup transforms.
+///This struct tries to be the same as the C++ version of `TransformListener`. Use this struct to lookup transforms.
 /// 
 /// Example usage:
 /// 
@@ -489,7 +534,8 @@ mod test {
 ///     }
 /// }
 /// ```
-/// Do note that unlike the C++ variant of the TfListener, 
+/// Do note that unlike the C++ variant of the TfListener, only one TfListener can be created at a time. Like its C++ counterpart,
+/// it must be scoped to exist through the lifetime of the program. One way to do this is using an `Arc` or `RwLock`.
 pub struct TfListener {
     buffer: Arc<RwLock<TfBuffer>>,
     static_subscriber: rosrust::Subscriber,
