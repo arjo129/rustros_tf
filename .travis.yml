@@ -15,4 +15,4 @@ after_success: |
     && echo '<meta http-equiv=refresh content=0;url=rosrust_tf/index.html>' > target/doc/index.html && \
     sudo pip install ghp-import && \
     ghp-import -n target/doc && \
-    git push -qf https://${TOKEN}@github.com/arjo129/rosrust_tf.git gh-pages
+    git push -qf https://${TOKEN}@github.com/arjo129/rustros_tf.git gh-pages

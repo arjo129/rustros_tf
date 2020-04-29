@@ -17,7 +17,7 @@ I am still working on the following:
 * Weed out `unwrap()`s
 
 ## Supported platforms
-Currently only Ubuntu 18.04 running ROS Melodic on x86_64 is working. It should work on any linux based system with a proper ROS installation.
+Currently only Ubuntu 18.04 running ROS Melodic on x86_64 is tested. It should work on any linux based system with a proper ROS installation.
 
 ## Getting Started
 Install [ROS](http://wiki.ros.org/melodic/Installation) first. On ubuntu, this can be done like so:
