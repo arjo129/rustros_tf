@@ -7,6 +7,8 @@ description = "This is a rust port of the [ROS tf library](http://wiki.ros.org/t
 license = "MIT OR Apache-2.0"
 keywords = ["transforms", "robotics", "ROS", "tf"]
 readme = "readme.md"
+documentation = "https://arjo129.github.io/rustros_tf/rustros_tf/index.html"
+repository = "https://github.com/arjo129/rustros_tf"
 
 [lib]
 crate-type = ["lib"]
@@ -18,4 +20,3 @@ rosrust_msg = "0.1"
 ndarray = "0.13.1"
 ndarray-linalg = { version = "0.12", features = ["netlib"] }
 nalgebra = "0.20"
-
