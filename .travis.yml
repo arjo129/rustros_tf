@@ -9,4 +9,10 @@ before_script:
     - source /opt/ros/melodic/setup.bash
 script:
     - cargo test  
-  
+
+after_success: |
+    cargo doc \
+    && echo '<meta http-equiv=refresh content=0;url=rosrust_tf/index.html>' > target/doc/index.html && \
+    sudo pip install ghp-import && \
+    ghp-import -n target/doc && \
+    git push -qf https://${TOKEN}@github.com/rosrust_tf.git gh-pages

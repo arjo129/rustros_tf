@@ -1,4 +1,5 @@
 # rustros_tf
+[![Build Status](https://travis-ci.com/arjo129/rustros_tf.svg?branch=master)](https://travis-ci.com/arjo129/rustros_tf)
 
 This is a rust port of the [ROS tf library](http://wiki.ros.org/tf). It is intended for being used in robots to help keep track of multiple coordinate frames and is part of a larger suite of rust libraries that provide support for various robotics related functionality.
 
@@ -13,6 +14,7 @@ I am still working on the following:
 * Adding `nalgebra` related conversion methods. 
 * More efficient cache data structure.
 * A `TfBroadcaster` struct.
+* Weed out `unwrap()`s
 
 ## Supported platforms
 Currently only Ubuntu 18.04 running ROS Melodic on x86_64 is working. It should work on any linux based system with a proper ROS installation.
