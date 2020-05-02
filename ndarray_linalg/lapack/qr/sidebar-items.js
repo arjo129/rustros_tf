@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["QR_","Wraps `*geqrf` and `*orgqr` (`*ungqr` for complex numbers)"]]});

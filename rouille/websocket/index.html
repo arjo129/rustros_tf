@@ -1,0 +1,60 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `websocket` mod in crate `rouille`."><meta name="keywords" content="rust, rustlang, rust-lang, websocket"><title>rouille::websocket - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../rouille/index.html'><div class='logo-container'><img src='../../rust-logo.png' alt='logo'></div></a><p class='location'>Module websocket</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'><a href='../index.html'>rouille</a></p><script>window.sidebarCurrent = {name: 'websocket', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../../src/rouille/websocket/mod.rs.html#10-247' title='goto source code'>[src]</a></span><span class='in-band'>Module <a href='../index.html'>rouille</a>::<wbr><a class="mod" href=''>websocket</a></span></h1><div class='docblock'><p>Support for websockets.</p>
+<p>Using websockets is done with the following steps:</p>
+<ul>
+<li>The websocket client (usually the browser through some Javascript) must send a request to the
+server to initiate the process. Examples for how to do this in Javascript are out of scope
+of this documentation but should be easy to find on the web.</li>
+<li>The server written with rouille must answer that request with the <code>start()</code> function defined
+in this module. This function returns an error if the request is not a websocket
+initialization request.</li>
+<li>The <code>start()</code> function also returns a <code>Receiver&lt;Websocket&gt;</code> object. Once that <code>Receiver</code>
+contains a value, the connection has been initiated.</li>
+<li>You can then use the <code>Websocket</code> object to communicate with the client through the <code>Read</code>
+and <code>Write</code> traits.</li>
+</ul>
+<h1 id="subprotocols" class="section-header"><a href="#subprotocols">Subprotocols</a></h1>
+<p>The websocket connection will produce either text or binary messages. But these messages do not
+have a meaning per se, and must also be interpreted in some way. The way messages are
+interpreted during a websocket connection is called a <em>subprotocol</em>.</p>
+<p>When you call <code>start()</code> you have to indicate which subprotocol the connection is going to use.
+This subprotocol must match one of the subprotocols that were passed by the client during its
+request, otherwise <code>start()</code> will return an error. It is also possible to pass <code>None</code>, in which
+case the subprotocol is unknown to both the client and the server.</p>
+<p>There are usually three ways to handle subprotocols on the server-side:</p>
+<ul>
+<li>You don't really care about subprotocols because you use websockets for your own needs. You
+can just pass <code>None</code> to <code>start()</code>. The connection will thus never fail unless the client
+decides to.</li>
+<li>Your route only handles one subprotocol. Just pass this subprotocol to <code>start()</code> and you will
+get an error (which you can handle for example with <code>try_or_400!</code>) if it's not supported by
+the client.</li>
+<li>Your route supports multiple subprotocols. This is the most complex situation as you will
+have to enumerate the protocols with <code>requested_protocols()</code> and choose one.</li>
+</ul>
+<h1 id="example" class="section-header"><a href="#example">Example</a></h1>
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Mutex</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">Receiver</span>;
+
+<span class="kw">use</span> <span class="ident">rouille</span>::<span class="ident">Request</span>;
+<span class="kw">use</span> <span class="ident">rouille</span>::<span class="ident">Response</span>;
+<span class="kw">use</span> <span class="ident">rouille</span>::<span class="ident">websocket</span>;
+
+<span class="kw">fn</span> <span class="ident">handle_request</span>(<span class="ident">request</span>: <span class="kw-2">&amp;</span><span class="ident">Request</span>, <span class="ident">websockets</span>: <span class="kw-2">&amp;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">websocket</span>::<span class="ident">Websocket</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>)
+                  <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span>
+{
+    <span class="kw">let</span> (<span class="ident">response</span>, <span class="ident">websocket</span>) <span class="op">=</span> <span class="macro">try_or_400</span><span class="macro">!</span>(<span class="ident">websocket</span>::<span class="ident">start</span>(<span class="ident">request</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;my-subprotocol&quot;</span>)));
+    <span class="ident">websockets</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">push</span>(<span class="ident">websocket</span>);
+    <span class="ident">response</span>
+}</pre></div>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.RequestedProtocolsIter.html" title='rouille::websocket::RequestedProtocolsIter struct'>RequestedProtocolsIter</a></td><td class='docblock-short'><p>Iterator to the list of protocols requested by the user.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Websocket.html" title='rouille::websocket::Websocket struct'>Websocket</a></td><td class='docblock-short'><p>A successful websocket. An open channel of communication. Implements <code>Read</code> and <code>Write</code>.</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.Message.html" title='rouille::websocket::Message enum'>Message</a></td><td class='docblock-short'><p>A message produced by a websocket connection.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.SendError.html" title='rouille::websocket::SendError enum'>SendError</a></td><td class='docblock-short'><p>Error that can happen when sending a message to the client.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.WebsocketError.html" title='rouille::websocket::WebsocketError enum'>WebsocketError</a></td><td class='docblock-short'><p>Error that can happen when attempting to start websocket.</p>
+</td></tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table><tr class='module-item'><td><a class="fn" href="fn.requested_protocols.html" title='rouille::websocket::requested_protocols fn'>requested_protocols</a></td><td class='docblock-short'><p>Returns a list of the websocket protocols requested by the client.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.start.html" title='rouille::websocket::start fn'>start</a></td><td class='docblock-short'><p>Builds a <code>Response</code> that initiates the websocket protocol.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "rouille";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>

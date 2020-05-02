@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["Eigh_","Wraps `*syev` for real and `*heev` for complex"]]});

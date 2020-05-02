@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ErrorKind","The kind of an error."],["FmtErrorKind","The kind of an error."]],"struct":[["Error","The Error type."],["FmtError","The Error type."]],"trait":[["ResultExt","Additional methods for `Result`, for easy interaction with this crate."]],"type":[["Result","Convenient wrapper around `std::Result`."]]});

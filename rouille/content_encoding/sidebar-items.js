@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["accepted_content_encodings","Returns an iterator of the list of content encodings accepted by the request."],["apply","Applies content encoding to the response."]],"struct":[["AcceptedContentEncodingsIter","Iterator to the list of content encodings accepted by a request."]]});

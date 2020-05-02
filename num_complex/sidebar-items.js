@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Complex","A complex number in Cartesian form."],["ComplexDistribution","A generic random value distribution for complex numbers."],["ParseComplexError",""]],"type":[["Complex32",""],["Complex64",""]]});

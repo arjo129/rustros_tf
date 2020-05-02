@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `match_assets` fn in crate `rouille`."><meta name="keywords" content="rust, rustlang, rust-lang, match_assets"><title>rouille::match_assets - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc fn"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../rouille/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><div class="sidebar-elems"><p class='location'><a href='index.html'>rouille</a></p><script>window.sidebarCurrent = {name: 'match_assets', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/rouille/assets.rs.html#80-131' title='goto source code'>[src]</a></span><span class='in-band'>Function <a href='index.html'>rouille</a>::<wbr><a class="fn" href=''>match_assets</a></span></h1><pre class='rust fn'>pub fn match_assets&lt;P:&nbsp;?<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>&gt;(request: &amp;<a class="struct" href="../rouille/struct.Request.html" title="struct rouille::Request">Request</a>, path: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;</a>P) -&gt; <a class="struct" href="../rouille/struct.Response.html" title="struct rouille::Response">Response</a> <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html" title="trait core::convert::AsRef">AsRef</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html" title="struct std::path::Path">Path</a>&gt;,&nbsp;</span></pre><div class='docblock'><p>Searches inside <code>path</code> for a file that matches the given request. If a file is found,
+returns a <code>Response</code> that would serve this file if returned. If no file is found, a 404
+response is returned instead.</p>
+<p>The value of the <code>Content-Type</code> header of the response is guessed based on the file's
+extension. If you wish so, you can modify that <code>Content-Type</code> by modifying the <code>Response</code>
+object returned by this function.</p>
+<h1 id="example" class="section-header"><a href="#example">Example</a></h1>
+<p>In this example, a request made for example to <code>/test.txt</code> will return the file
+<code>public/test.txt</code> (relative to the current working directory, which is usually the location
+of the <code>Cargo.toml</code>) if it exists.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="ident">rouille</span>::<span class="ident">start_server</span>(<span class="string">&quot;localhost:8000&quot;</span>, <span class="kw">move</span> <span class="op">|</span><span class="ident">request</span><span class="op">|</span> {
+    <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">rouille</span>::<span class="ident">match_assets</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>, <span class="string">&quot;public&quot;</span>);
+    <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">is_success</span>() {
+        <span class="kw">return</span> <span class="ident">response</span>;
+    }
+
+    <span class="comment">// ...</span>
+});</pre></div>
+<h1 id="security" class="section-header"><a href="#security">Security</a></h1>
+<p>Everything inside the directory that you pass as <code>path</code> is potentially accessible by any
+client. <strong>Do not use assume that client won't be able to guess the URL of a sensitive file</strong>.
+All sensitive files should require a login/password to be accessed.</p>
+<p>If you want to serve sensitive files, you are encouraged to put them in a different directory
+than public files, and call <code>match_assets</code> once for public files and once for private files
+after you checked the user's credentials.
+Only call <code>match_assets</code> <strong>after</strong> you know that the user can have access to all the files
+that can be served.</p>
+<p>If you manage the user's accesses per-file, use a white list of authorized files instead of a
+black list of forbidden files. Files can potentially be accessed from multiple different URLs
+and a black list may not cover everything.</p>
+<h1 id="example-with-prefix" class="section-header"><a href="#example-with-prefix">Example with prefix</a></h1>
+<p>Sometimes you want to add a prefix to the URL of your static files. To do that, you can use
+the <code>remove_prefix</code> method on <code>Request</code>.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="ident">rouille</span>::<span class="ident">start_server</span>(<span class="string">&quot;localhost:8000&quot;</span>, <span class="kw">move</span> <span class="op">|</span><span class="ident">request</span><span class="op">|</span> {
+    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">request</span>) <span class="op">=</span> <span class="ident">request</span>.<span class="ident">remove_prefix</span>(<span class="string">&quot;/static&quot;</span>) {
+        <span class="kw">return</span> <span class="ident">rouille</span>::<span class="ident">match_assets</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>, <span class="string">&quot;public&quot;</span>);
+    }
+
+    <span class="comment">// ...</span>
+});</pre></div>
+<p>In this example, a request made to <code>/static/test.txt</code> will return the file
+<code>public/test.txt</code> if it exists.</p>
+</div></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "rouille";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `post` mod in crate `rouille`."><meta name="keywords" content="rust, rustlang, rust-lang, post"><title>rouille::input::post - Rust</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="shortcut icon" href="../../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../rouille/index.html'><div class='logo-container'><img src='../../../rust-logo.png' alt='logo'></div></a><p class='location'>Module post</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'><a href='../../index.html'>rouille</a>::<wbr><a href='../index.html'>input</a></p><script>window.sidebarCurrent = {name: 'post', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../../../src/rouille/input/post.rs.html#10-1027' title='goto source code'>[src]</a></span><span class='in-band'>Module <a href='../../index.html'>rouille</a>::<wbr><a href='../index.html'>input</a>::<wbr><a class="mod" href=''>post</a></span></h1><div class='docblock'><p>Parsing data sent with a <code>&lt;form method=&quot;POST&quot;&gt;</code>.</p>
+<p>In order to parse the body of a request, you can use the <code>post_input!</code> macro.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">rouille</span>::<span class="ident">Request</span>;
+<span class="kw">use</span> <span class="ident">rouille</span>::<span class="ident">Response</span>;
+
+<span class="kw">fn</span> <span class="ident">handle_request</span>(<span class="ident">request</span>: <span class="kw-2">&amp;</span><span class="ident">Request</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span> {
+    <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="macro">try_or_400</span><span class="macro">!</span>(<span class="macro">post_input</span><span class="macro">!</span>(<span class="ident">request</span>, {
+        <span class="ident">field1</span>: <span class="ident">u32</span>,
+        <span class="ident">field2</span>: <span class="ident">String</span>,
+    }));
+
+    <span class="ident">Response</span>::<span class="ident">text</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;the value of field1 is: {}&quot;</span>, <span class="ident">input</span>.<span class="ident">field1</span>))
+}</pre></div>
+<p>In this example, the macro will read the body of the request and try to find fields whose
+names are <code>field1</code> and <code>field2</code>. If the body was already retreived earlier, if the content-type
+is not one of the possible values, or if a field is missing or can't be parsed, then an error
+is returned. Usually you want to handle this error by returning an error to the client.</p>
+<p>The macro will define and build a struct whose members are the field names that are passed.
+The macro then returns a <code>Result&lt;TheGeneratedStruct, PostError&gt;</code>.</p>
+<h1 id="data-types" class="section-header"><a href="#data-types">Data types</a></h1>
+<p>The types that can be used with this macro are the following:</p>
+<ul>
+<li><code>String</code>: The value sent by the client is directly put in the <code>String</code>.</li>
+<li><code>u8</code>/<code>i8</code>/<code>u16</code>/<code>i16</code>/ <code>u32</code>/<code>i32</code>/ <code>u64</code>/<code>i64</code>/<code>usize</code>/<code>isize</code>/<code>f32</code>/<code>f64</code>: Rouille will try
+to parse the number from the data passed by the client. An error is produced if the client
+sent a value that failed to parse or that overflows the capacity of the number.</li>
+<li><code>Option&lt;T&gt;</code>: This is equivalent to <code>T</code>, but if the field is missing or fails to parse then
+the <code>Option</code> will contain <code>None</code> and no error will be produced. </li>
+<li><code>bool</code>: Will be <code>true</code> if the field is present at least once and <code>false</code> if it is absent.
+This is suitable to know whether a <code>&lt;input type=&quot;checkbox&quot; /&gt;</code> is checked or not.</li>
+<li><code>Vec&lt;T&gt;</code>: Same as <code>T</code>, except that if the client sends multiple fields with that name then
+they are merged together. If you don't use a <code>Vec</code> then an error is returned in that
+situation. If the client provides multiple values and some of them fail to parse, an error
+is returned. You can use a <code>Vec&lt;Option&lt;T&gt;&gt;</code> if you don't want an error on parse failure.
+Empty vecs are possible.</li>
+<li>The file-uploads-related types. See below.</li>
+</ul>
+<blockquote>
+<p><strong>Note</strong>: You may find resources on the web telling you that you must put brackets (<code>[</code> <code>]</code>)
+after the name of inputs of type <code>&lt;select multiple&gt;</code> and <code>&lt;input type=&quot;file&quot; multiple&gt;</code>.
+This is only necessary for some programming languages and frameworks, and is not relevant
+for rouille. With rouille you just need to use a <code>Vec</code> for the data type.</p>
+</blockquote>
+<p>You can also use your own types by implementing the
+<a href="trait.DecodePostField.html"><code>DecodePostField</code> trait</a>. See below.</p>
+<h1 id="handling-file-uploads" class="section-header"><a href="#handling-file-uploads">Handling file uploads</a></h1>
+<p>In order to receive a file sent with a <code>&lt;form&gt;</code>, you should use one of the provided structs
+that represent a file:</p>
+<ul>
+<li><a href="struct.BufferedFile.html"><code>BufferedFile</code></a>, in which case the body of the file will be stored
+in memory.</li>
+</ul>
+<p>Example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">rouille</span>::<span class="ident">Request</span>;
+<span class="kw">use</span> <span class="ident">rouille</span>::<span class="ident">Response</span>;
+<span class="kw">use</span> <span class="ident">rouille</span>::<span class="ident">input</span>::<span class="ident">post</span>::<span class="ident">BufferedFile</span>;
+
+<span class="kw">fn</span> <span class="ident">handle_request</span>(<span class="ident">request</span>: <span class="kw-2">&amp;</span><span class="ident">Request</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span> {
+    <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="macro">try_or_400</span><span class="macro">!</span>(<span class="macro">post_input</span><span class="macro">!</span>(<span class="ident">request</span>, {
+        <span class="ident">file</span>: <span class="ident">BufferedFile</span>,
+    }));
+
+    <span class="ident">Response</span>::<span class="ident">text</span>(<span class="string">&quot;everything ok&quot;</span>)
+}</pre></div>
+<h1 id="how-it-works-internally" class="section-header"><a href="#how-it-works-internally">How it works internally</a></h1>
+<p>In order for the macro to work, each type of data (like <code>u32</code>, <code>String</code> or <code>BufferedFile</code>) must
+implement the <a href="trait.DecodePostField.html"><code>DecodePostField</code> trait</a>.</p>
+<p>The template parameter of the trait represents the type of the configuration object that is
+accepted by the methods. If the user doesn't specify any configuration, the type will be <code>()</code>.</p>
+<p>When rouille's parser finds a field with the correct name it will attempt to call the
+<code>from_field</code> method, and if it find a file with the correct name it will attempt to call the
+<code>from_file</code> method. You should return <code>PostFieldError::WrongFieldType</code> if you're
+expecting a file and <code>from_field</code> was called, or vice-versa.</p>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.BufferedFile.html" title='rouille::input::post::BufferedFile struct'>BufferedFile</a></td><td class='docblock-short'><p>Implementation of the <code>DecodePostField</code> that puts the body of the file in memory.</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.PostError.html" title='rouille::input::post::PostError enum'>PostError</a></td><td class='docblock-short'><p>Error that can happen when decoding POST data.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.PostFieldError.html" title='rouille::input::post::PostFieldError enum'>PostFieldError</a></td><td class='docblock-short'><p>Error returned by the methods of <a href="trait.DecodePostField.html">the <code>DecodePostField</code> trait</a>.</p>
+</td></tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table><tr class='module-item'><td><a class="trait" href="trait.DecodePostField.html" title='rouille::input::post::DecodePostField trait'>DecodePostField</a></td><td class='docblock-short'><p>Must be implemented on types used with the <code>post_input!</code> macro.</p>
+</td></tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table><tr class='module-item'><td><a class="fn" href="fn.raw_urlencoded_post_input.html" title='rouille::input::post::raw_urlencoded_post_input fn'>raw_urlencoded_post_input</a></td><td class='docblock-short'><p>Attempts to decode the <code>POST</code> data received by the request.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "rouille";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script></body></html>

@@ -1,0 +1,1 @@
+initSidebarItems({"macro":[["ros_debug",""],["ros_err",""],["ros_fatal",""],["ros_info",""],["ros_log",""],["ros_warn",""]],"mod":[["api",""],["singleton",""]],"struct":[["Client",""],["ClientResponse",""],["Duration",""],["Parameter",""],["Time",""]],"trait":[["Clock",""],["Message",""],["ServicePair",""]]});

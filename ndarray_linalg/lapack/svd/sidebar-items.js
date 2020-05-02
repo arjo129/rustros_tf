@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["SVDOutput","Result of SVD"]],"trait":[["SVD_","Wraps `*gesvd`"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["UVTFlag",""]],"trait":[["SVDDC","Singular-value decomposition of matrix (copying) by divide-and-conquer"],["SVDDCInplace","Singular-value decomposition of matrix reference by divide-and-conquer"],["SVDDCInto","Singular-value decomposition of matrix by divide-and-conquer"]]});

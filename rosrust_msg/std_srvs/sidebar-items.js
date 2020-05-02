@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Empty",""],["EmptyReq",""],["EmptyRes",""],["SetBool",""],["SetBoolReq",""],["SetBoolRes",""],["Trigger",""],["TriggerReq",""],["TriggerRes",""]]});

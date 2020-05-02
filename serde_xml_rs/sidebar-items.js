@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Error",""]],"fn":[["deserialize",""],["serialize","A convenience method for serializing some object to a buffer."]],"struct":[["Deserializer",""],["EventReader","A wrapper around an `std::io::Read` instance which provides pull-based XML parsing."],["ParserConfig","Parser configuration structure."],["Serializer","An XML Serializer."]]});
