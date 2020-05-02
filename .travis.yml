@@ -11,8 +11,8 @@ script:
     - cargo test  
 
 after_success: |
-    cargo doc \
+    if [ "$TRAVIS_PULL_REQUEST" = "false" -a "$TRAVIS_BRANCH" = "master" ]; then cargo doc \
     && echo '<meta http-equiv=refresh content=0;url=rosrust_tf/index.html>' > target/doc/index.html && \
     sudo pip install ghp-import && \
     ghp-import -n target/doc && \
-    git push -qf https://${TOKEN}@github.com/arjo129/rustros_tf.git gh-pages
+    git push -qf https://${TOKEN}@github.com/arjo129/rustros_tf.git gh-pages; fi

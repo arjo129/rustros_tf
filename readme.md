@@ -1,5 +1,5 @@
 # rustros_tf
-[![Build Status](https://travis-ci.com/arjo129/rustros_tf.svg?branch=master)](https://travis-ci.com/arjo129/rustros_tf) | [API Documentation](https://arjo129.github.io/rustros_tf/rustros_tf/index.html)
+[![Build Status](https://travis-ci.com/arjo129/rustros_tf.svg?branch=master)](https://travis-ci.com/arjo129/rustros_tf) | [API Documentation](https://arjo129.github.io/rustros_tf/rustros_tf/index.html) | [crates.io](https://crates.io/crates/rustros_tf)
 
 This is a rust port of the [ROS tf library](http://wiki.ros.org/tf). It is intended for being used in robots to help keep track of multiple coordinate frames and is part of a larger suite of rust libraries that provide support for various robotics related functionality.
 
@@ -8,7 +8,7 @@ So far the only the following have been implemented:
 * `TfListener` with `lookup_transform` and time traversal. 
 
 I am still working on the following:
-* Integration with point clouds.
+* Integration with point clouds. 
 * Integration with image geometry.
 * Removal of `ndarray` as a dependency.
 * Adding `nalgebra` related conversion methods. 
