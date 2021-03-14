@@ -25,7 +25,7 @@ use rosrust_msg::geometry_msgs::{Transform, Pose, Vector3, Quaternion,
 use rosrust_msg::std_msgs::Header;
 use rosrust_msg::tf2_msgs::TFMessage;
 
-mod transforms;
+pub mod transforms;
 
 #[derive(Clone, Debug)]
 struct OrderedTF{

@@ -5,7 +5,6 @@ use rosrust_msg::geometry_msgs::{Transform, Pose, Vector3, Quaternion,
 use rosrust_msg::std_msgs::Header;
 
 
-
 pub fn isometry_from_pose(pose: &Pose) -> Isometry3<f64>{
     let trans = Translation3::new(pose.position.x, pose.position.y,
                                  pose.position.z);
