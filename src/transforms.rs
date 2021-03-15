@@ -1,5 +1,5 @@
-use nalgebra::geometry::{UnitQuaternion, Isometry3,Point3, Translation3};
-use nalgebra::geometry;
+use nalgebra::geometry::{UnitQuaternion, Isometry3, Translation3};
+pub use nalgebra;
 use rosrust_msg::geometry_msgs::{Transform, Pose, Vector3, Quaternion,
     TransformStamped};
 use rosrust_msg::std_msgs::Header;
@@ -69,10 +69,10 @@ pub fn chain_transforms(transforms: &Vec<Transform>) -> Transform {
 }
 
 pub fn interpolate(t1: Transform, t2: Transform, weight: f64) -> Transform {
-    let r1 = geometry::Quaternion::new(t1.rotation.w, t1.rotation.x, t1.rotation.y, t1.rotation.z);
-    let r2 = geometry::Quaternion::new(t2.rotation.w, t2.rotation.x, t2.rotation.y, t2.rotation.z);
-    let r1 = geometry::UnitQuaternion::from_quaternion(r1);
-    let r2 = geometry::UnitQuaternion::from_quaternion(r2);
+    let r1 = nalgebra::geometry::Quaternion::new(t1.rotation.w, t1.rotation.x, t1.rotation.y, t1.rotation.z);
+    let r2 = nalgebra::geometry::Quaternion::new(t2.rotation.w, t2.rotation.x, t2.rotation.y, t2.rotation.z);
+    let r1 = UnitQuaternion::from_quaternion(r1);
+    let r2 = UnitQuaternion::from_quaternion(r2);
     let res  = r1.try_slerp(&r2, weight, 1e-9);
     match res {
         Some(qt) => {

@@ -20,8 +20,7 @@ use std::collections::VecDeque;
 use std::collections::HashSet;
 use std::cmp::Ordering;
 use std::sync::{Arc, RwLock};
-use rosrust_msg::geometry_msgs::{Transform, Pose, Vector3, Quaternion,
-    TransformStamped};
+use rosrust_msg::geometry_msgs::{Transform, TransformStamped};
 use rosrust_msg::std_msgs::Header;
 use rosrust_msg::tf2_msgs::TFMessage;
 
@@ -30,12 +29,6 @@ pub mod transforms;
 #[derive(Clone, Debug)]
 struct OrderedTF{
     tf: TransformStamped
-}
-
-impl OrderedTF{
-    pub fn new(trans: TransformStamped) -> Self {
-        return OrderedTF{tf: trans};
-    }
 }
 
 impl PartialEq for OrderedTF {
