@@ -15,37 +15,38 @@
 //!     }
 //! }
 //!```
-use std::collections::HashMap;
-use std::collections::VecDeque;
-use std::collections::HashSet;
-use std::cmp::Ordering;
-use std::sync::{Arc, RwLock};
 use rosrust_msg::geometry_msgs::{Transform, TransformStamped};
 use rosrust_msg::std_msgs::Header;
 use rosrust_msg::tf2_msgs::TFMessage;
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::VecDeque;
+use std::sync::{Arc, RwLock};
 
 pub mod transforms;
 
 #[derive(Clone, Debug)]
-struct OrderedTF{
-    tf: TransformStamped
+struct OrderedTF {
+    tf: TransformStamped,
 }
 
 impl PartialEq for OrderedTF {
-    fn eq(&self, other: &Self) -> bool{
-        self.tf.header.stamp == other.tf.header.stamp}
+    fn eq(&self, other: &Self) -> bool {
+        self.tf.header.stamp == other.tf.header.stamp
+    }
 }
 
-impl Eq for OrderedTF{}
+impl Eq for OrderedTF {}
 
-impl Ord for  OrderedTF {
+impl Ord for OrderedTF {
     fn cmp(&self, other: &Self) -> Ordering {
         self.tf.header.stamp.cmp(&other.tf.header.stamp)
     }
 }
 
 impl PartialOrd for OrderedTF {
-    fn partial_cmp(&self, other: &Self)  -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.tf.header.stamp.cmp(&other.tf.header.stamp))
     }
 }
@@ -62,9 +63,8 @@ pub enum TfError {
     /// There is no path between the from and to frame.
     CouldNotFindTransform,
     /// In the event that a write is simultaneously happening with a read of the same tf buffer
-    CouldNotAcquireLock
+    CouldNotAcquireLock,
 }
-
 
 fn get_nanos(dur: rosrust::Duration) -> i64 {
     i64::from(dur.sec) * 1_000_000_000 + i64::from(dur.nsec)
@@ -74,38 +74,44 @@ fn to_transform_stamped(
     tf: Transform,
     from: std::string::String,
     to: std::string::String,
-    time: rosrust::Time) -> TransformStamped{
-        TransformStamped{
-            header: Header{frame_id: from, stamp: time, seq: 1u32},
-            child_frame_id: to,
-            transform: tf
-        }
+    time: rosrust::Time,
+) -> TransformStamped {
+    TransformStamped {
+        header: Header {
+            frame_id: from,
+            stamp: time,
+            seq: 1u32,
+        },
+        child_frame_id: to,
+        transform: tf,
     }
+}
 
 #[derive(Clone, Debug)]
 struct TfIndividualTransformChain {
     buffer_size: usize,
     static_tf: bool,
     //TODO:  Implement a circular buffer. Current method is slowww.
-    transform_chain: Vec<OrderedTF>
+    transform_chain: Vec<OrderedTF>,
 }
-
 
 impl TfIndividualTransformChain {
     pub fn new(static_tf: bool) -> Self {
-        return TfIndividualTransformChain{
-            buffer_size: 100, transform_chain:Vec::new(),
-            static_tf: static_tf};
+        return TfIndividualTransformChain {
+            buffer_size: 100,
+            transform_chain: Vec::new(),
+            static_tf: static_tf,
+        };
     }
 
     pub fn add_to_buffer(&mut self, msg: TransformStamped) {
-
-        let res = self.transform_chain.binary_search(
-            &OrderedTF{tf: msg.clone()});
+        let res = self
+            .transform_chain
+            .binary_search(&OrderedTF { tf: msg.clone() });
 
         match res {
-            Ok(x) => self.transform_chain.insert(x, OrderedTF{tf: msg}),
-            Err(x) => self.transform_chain.insert(x, OrderedTF{tf: msg})
+            Ok(x) => self.transform_chain.insert(x, OrderedTF { tf: msg }),
+            Err(x) => self.transform_chain.insert(x, OrderedTF { tf: msg }),
         }
 
         if self.transform_chain.len() > self.buffer_size {
@@ -113,52 +119,64 @@ impl TfIndividualTransformChain {
         }
     }
 
-    pub fn get_closest_transform(
-            &self, time: rosrust::Time) -> Result<TransformStamped, TfError> {
+    pub fn get_closest_transform(&self, time: rosrust::Time) -> Result<TransformStamped, TfError> {
         if self.static_tf {
-            return Ok(
-                self.transform_chain.get(
-                    self.transform_chain.len()-1).unwrap().tf.clone());
+            return Ok(self
+                .transform_chain
+                .get(self.transform_chain.len() - 1)
+                .unwrap()
+                .tf
+                .clone());
         }
 
         let mut res = TransformStamped::default();
         res.header.stamp = time;
         res.transform.rotation.w = 1f64;
 
-        let res = self.transform_chain.binary_search(&OrderedTF{tf: res});
+        let res = self.transform_chain.binary_search(&OrderedTF { tf: res });
 
         match res {
-            Ok(x)=> return Ok(
-                self.transform_chain.get(x).unwrap().tf.clone()),
-            Err(x)=> {
+            Ok(x) => return Ok(self.transform_chain.get(x).unwrap().tf.clone()),
+            Err(x) => {
                 if x == 0 {
                     return Err(TfError::AttemptedLookupInPast);
                 }
                 if x >= self.transform_chain.len() {
-                    return Err(TfError::AttemptedLookUpInFuture)
+                    return Err(TfError::AttemptedLookUpInFuture);
                 }
-                let tf1 = self.transform_chain.get(x-1).unwrap().clone().tf.transform;
+                let tf1 = self
+                    .transform_chain
+                    .get(x - 1)
+                    .unwrap()
+                    .clone()
+                    .tf
+                    .transform;
                 let tf2 = self.transform_chain.get(x).unwrap().clone().tf.transform;
-                let time1 = self.transform_chain.get(x-1).unwrap().tf.header.stamp;
+                let time1 = self.transform_chain.get(x - 1).unwrap().tf.header.stamp;
                 let time2 = self.transform_chain.get(x).unwrap().tf.header.stamp;
                 let header = self.transform_chain.get(x).unwrap().tf.header.clone();
-                let child_frame = self.transform_chain.get(x).unwrap().tf.child_frame_id.clone();
+                let child_frame = self
+                    .transform_chain
+                    .get(x)
+                    .unwrap()
+                    .tf
+                    .child_frame_id
+                    .clone();
                 let total_duration = get_nanos(time2 - time1) as f64;
                 let desired_duration = get_nanos(time - time1) as f64;
-                let weight = 1.0 - desired_duration/total_duration;
+                let weight = 1.0 - desired_duration / total_duration;
                 let final_tf = transforms::interpolate(tf1, tf2, weight);
-                let ros_msg = to_transform_stamped(
-                    final_tf, header.frame_id, child_frame, time);
+                let ros_msg = to_transform_stamped(final_tf, header.frame_id, child_frame, time);
                 Ok(ros_msg)
             }
         }
     }
 }
 
-#[derive(Clone,Debug,Hash)]
+#[derive(Clone, Debug, Hash)]
 struct TfGraphNode {
     child: String,
-    parent: String
+    parent: String,
 }
 
 impl PartialEq for TfGraphNode {
@@ -171,50 +189,65 @@ impl Eq for TfGraphNode {}
 
 #[derive(Clone, Debug)]
 struct TfBuffer {
-    child_transform_index: HashMap<String, HashSet<String> >,
-    transform_data: HashMap<TfGraphNode, TfIndividualTransformChain>
+    child_transform_index: HashMap<String, HashSet<String>>,
+    transform_data: HashMap<TfGraphNode, TfIndividualTransformChain>,
 }
 
+fn strip_leading_slash(transform: &mut TransformStamped) {
+    if transform.child_frame_id.to_string().starts_with('/') {
+        transform.child_frame_id.remove(0);
+    }
+    if transform.header.frame_id.to_string().starts_with('/') {
+        transform.header.frame_id.remove(0);
+    }
+}
 
 impl TfBuffer {
-
     fn new() -> Self {
-        TfBuffer{
+        TfBuffer {
             child_transform_index: HashMap::new(),
-            transform_data: HashMap::new()}
+            transform_data: HashMap::new(),
+        }
     }
 
-    fn handle_incoming_transforms(
-            &mut self, transforms: TFMessage, static_tf: bool) {
-        for transform in transforms.transforms {
+    fn handle_incoming_transforms(&mut self, transforms: TFMessage, static_tf: bool) {
+        for mut transform in transforms.transforms {
+            strip_leading_slash(&mut transform);
             self.add_transform(&transform, static_tf);
             self.add_transform(&transforms::get_inverse(&transform), static_tf);
         }
     }
 
-    fn add_transform (
-            &mut self, transform: &TransformStamped, static_tf: bool) {
+    fn add_transform(&mut self, transform: &TransformStamped, static_tf: bool) {
         //TODO: Detect is new transform will create a loop
-        if self.child_transform_index.contains_key(&transform.header.frame_id) {
-            let res = self.child_transform_index.get_mut(
-                &transform.header.frame_id.clone()).unwrap();
+        if self
+            .child_transform_index
+            .contains_key(&transform.header.frame_id)
+        {
+            let res = self
+                .child_transform_index
+                .get_mut(&transform.header.frame_id.clone())
+                .unwrap();
             res.insert(transform.child_frame_id.clone());
-        }
-        else {
-            self.child_transform_index.insert(
-                transform.header.frame_id.clone(), HashSet::new());
-            let res = self.child_transform_index.get_mut(
-                &transform.header.frame_id.clone()).unwrap();
+        } else {
+            self.child_transform_index
+                .insert(transform.header.frame_id.clone(), HashSet::new());
+            let res = self
+                .child_transform_index
+                .get_mut(&transform.header.frame_id.clone())
+                .unwrap();
             res.insert(transform.child_frame_id.clone());
         }
 
-        let key = TfGraphNode{child: transform.child_frame_id.clone(), parent: transform.header.frame_id.clone()};
+        let key = TfGraphNode {
+            child: transform.child_frame_id.clone(),
+            parent: transform.header.frame_id.clone(),
+        };
 
         if self.transform_data.contains_key(&key) {
             let data = self.transform_data.get_mut(&key).unwrap();
             data.add_to_buffer(transform.clone());
-        }
-        else {
+        } else {
             let mut data = TfIndividualTransformChain::new(static_tf);
             data.add_to_buffer(transform.clone());
             self.transform_data.insert(key, data);
@@ -222,9 +255,8 @@ impl TfBuffer {
     }
 
     /// Retrieves the transform path
-    fn retrieve_transform_path(
-            &self, from: String, to: String) -> Result<Vec<String>, TfError> {
-        let mut res = vec!();
+    fn retrieve_transform_path(&self, from: String, to: String) -> Result<Vec<String>, TfError> {
+        let mut res = vec![];
         let mut frontier: VecDeque<String> = VecDeque::new();
         let mut visited: HashSet<String> = HashSet::new();
         let mut parents: HashMap<String, String> = HashMap::new();
@@ -239,7 +271,7 @@ impl TfBuffer {
             let children = self.child_transform_index.get(&current_node);
             match children {
                 Some(children) => {
-                    for  v in children {
+                    for v in children {
                         if visited.contains(&v.to_string()) {
                             continue;
                         }
@@ -247,10 +279,9 @@ impl TfBuffer {
                         frontier.push_front(v.to_string());
                         visited.insert(v.to_string());
                     }
-                },
+                }
                 None => {}
             }
-
         }
         let mut r = to;
         while r != from {
@@ -258,10 +289,8 @@ impl TfBuffer {
             let parent = parents.get(&r);
 
             match parent {
-                Some(x) => {
-                    r = x.to_string()
-                },
-                None => return Err(TfError::CouldNotFindTransform)
+                Some(x) => r = x.to_string(),
+                None => return Err(TfError::CouldNotFindTransform),
             }
         }
         res.reverse();
@@ -270,8 +299,11 @@ impl TfBuffer {
 
     /// Looks up a transform within the tree at a given time.
     pub fn lookup_transform(
-            &self, from: &str, to: &str, time: rosrust::Time
-        ) -> Result<TransformStamped,TfError> {
+        &self,
+        from: &str,
+        to: &str,
+        time: rosrust::Time,
+    ) -> Result<TransformStamped, TfError> {
         let from = from.to_string();
         let to = to.to_string();
         let path = self.retrieve_transform_path(from.clone(), to.clone());
@@ -281,7 +313,10 @@ impl TfBuffer {
                 let mut tflist: Vec<Transform> = Vec::new();
                 let mut first = from.clone();
                 for intermediate in path {
-                    let node = TfGraphNode{child: intermediate.clone(), parent: first.clone()};
+                    let node = TfGraphNode {
+                        child: intermediate.clone(),
+                        parent: first.clone(),
+                    };
                     let time_cache = self.transform_data.get(&node).unwrap();
                     let transform = time_cache.get_closest_transform(time);
                     match transform {
@@ -298,31 +333,43 @@ impl TfBuffer {
                     header: Header {
                         frame_id: from.clone(),
                         stamp: time,
-                        seq: 1
+                        seq: 1,
                     },
-                    transform: final_tf
+                    transform: final_tf,
                 };
-                return Ok(msg)
-            },
-            Err(x) => return Err(x)
+                return Ok(msg);
+            }
+            Err(x) => return Err(x),
         };
     }
 
     fn lookup_transform_with_time_travel(
-            &self,
-            to: &str,
-            time2: rosrust::Time,
-            from: &str,
-            time1: rosrust::Time,
-            fixed_frame: &str
-        ) ->  Result<TransformStamped,TfError> {
+        &self,
+        to: &str,
+        time2: rosrust::Time,
+        from: &str,
+        time1: rosrust::Time,
+        fixed_frame: &str,
+    ) -> Result<TransformStamped, TfError> {
         let tf1 = self.lookup_transform(from, fixed_frame, time1);
         let tf2 = self.lookup_transform(to, fixed_frame, time2);
-        match tf1 {Err(x) => return Err(x), Ok(_)=>{}}
-        match tf2 {Err(x) => return Err(x), Ok(_)=>{}}
+        match tf1 {
+            Err(x) => return Err(x),
+            Ok(_) => {}
+        }
+        match tf2 {
+            Err(x) => return Err(x),
+            Ok(_) => {}
+        }
         let transforms = transforms::get_inverse(&tf1.unwrap());
-        let result = transforms::chain_transforms(&vec!(tf2.unwrap().transform, transforms.transform));
-        Ok(to_transform_stamped(result, from.to_string(), to.to_string(), time1))
+        let result =
+            transforms::chain_transforms(&vec![tf2.unwrap().transform, transforms.transform]);
+        Ok(to_transform_stamped(
+            result,
+            from.to_string(),
+            to.to_string(),
+            time1,
+        ))
     }
 }
 
@@ -335,24 +382,31 @@ mod test {
     /// * base_link of a robot starting at (0,0,0) and progressing at (0,t,0) where t is time in seconds
     /// * a camera which is (0.5, 0, 0) from the base_link
     fn build_test_tree(buffer: &mut TfBuffer, time: f64) {
-
-        let nsecs = ((time - ((time.floor() as i64) as f64))*1E9) as u32;
+        let nsecs = ((time - ((time.floor() as i64) as f64)) * 1E9) as u32;
 
         let world_to_item = TransformStamped {
             child_frame_id: "item".to_string(),
             header: Header {
                 frame_id: "world".to_string(),
-                stamp: rosrust::Time{sec: time.floor() as u32, nsec: nsecs},
-                seq: 1
-            },
-            transform: Transform{
-                rotation: Quaternion{
-                    x: 0f64, y: 0f64, z: 0f64, w: 1f64
+                stamp: rosrust::Time {
+                    sec: time.floor() as u32,
+                    nsec: nsecs,
                 },
-                translation: Vector3{
-                    x: 1f64, y: 0f64, z: 0f64
-                }
-           }
+                seq: 1,
+            },
+            transform: Transform {
+                rotation: Quaternion {
+                    x: 0f64,
+                    y: 0f64,
+                    z: 0f64,
+                    w: 1f64,
+                },
+                translation: Vector3 {
+                    x: 1f64,
+                    y: 0f64,
+                    z: 0f64,
+                },
+            },
         };
         buffer.add_transform(&world_to_item, true);
         buffer.add_transform(&transforms::get_inverse(&world_to_item), true);
@@ -361,63 +415,83 @@ mod test {
             child_frame_id: "base_link".to_string(),
             header: Header {
                 frame_id: "world".to_string(),
-                stamp: rosrust::Time{sec: time.floor() as u32, nsec: nsecs},
-                seq: 1
-            },
-            transform: Transform{
-                rotation: Quaternion{
-                    x: 0f64, y: 0f64, z: 0f64, w: 1f64
+                stamp: rosrust::Time {
+                    sec: time.floor() as u32,
+                    nsec: nsecs,
                 },
-                translation: Vector3{
-                    x: 0f64, y: time, z: 0f64
-                }
-           }
+                seq: 1,
+            },
+            transform: Transform {
+                rotation: Quaternion {
+                    x: 0f64,
+                    y: 0f64,
+                    z: 0f64,
+                    w: 1f64,
+                },
+                translation: Vector3 {
+                    x: 0f64,
+                    y: time,
+                    z: 0f64,
+                },
+            },
         };
         buffer.add_transform(&world_to_base_link, false);
-        buffer.add_transform(&transforms::get_inverse(&world_to_base_link),  false);
+        buffer.add_transform(&transforms::get_inverse(&world_to_base_link), false);
 
         let base_link_to_camera = TransformStamped {
             child_frame_id: "camera".to_string(),
             header: Header {
                 frame_id: "base_link".to_string(),
-                stamp: rosrust::Time{sec: time.floor() as u32, nsec: nsecs},
-                seq: 1
-            },
-            transform: Transform{
-                rotation: Quaternion{
-                    x: 0f64, y: 0f64, z: 0f64, w:1f64
+                stamp: rosrust::Time {
+                    sec: time.floor() as u32,
+                    nsec: nsecs,
                 },
-                translation: Vector3{
-                    x: 0.5f64, y: 0f64, z: 0f64
-                }
-           }
+                seq: 1,
+            },
+            transform: Transform {
+                rotation: Quaternion {
+                    x: 0f64,
+                    y: 0f64,
+                    z: 0f64,
+                    w: 1f64,
+                },
+                translation: Vector3 {
+                    x: 0.5f64,
+                    y: 0f64,
+                    z: 0f64,
+                },
+            },
         };
         buffer.add_transform(&base_link_to_camera, true);
         buffer.add_transform(&get_inverse(&base_link_to_camera), true);
     }
-
 
     /// Tests a basic lookup
     #[test]
     fn test_basic_tf_lookup() {
         let mut tf_buffer = TfBuffer::new();
         build_test_tree(&mut tf_buffer, 0f64);
-        let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time{sec:0, nsec:0});
+        let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time { sec: 0, nsec: 0 });
         let expected = TransformStamped {
             child_frame_id: "item".to_string(),
             header: Header {
                 frame_id: "camera".to_string(),
-                stamp: rosrust::Time{sec:0, nsec:0},
-                seq: 1
+                stamp: rosrust::Time { sec: 0, nsec: 0 },
+                seq: 1,
             },
-            transform: Transform{
-                rotation: Quaternion{
-                    x: 0f64, y: 0f64, z: 0f64, w: 1f64
+            transform: Transform {
+                rotation: Quaternion {
+                    x: 0f64,
+                    y: 0f64,
+                    z: 0f64,
+                    w: 1f64,
                 },
-                translation: Vector3{
-                    x: 0.5f64, y: 0f64, z: 0f64
-                }
-            }
+                translation: Vector3 {
+                    x: 0.5f64,
+                    y: 0f64,
+                    z: 0f64,
+                },
+            },
         };
         assert_eq!(res.unwrap(), expected);
     }
@@ -428,22 +502,37 @@ mod test {
         let mut tf_buffer = TfBuffer::new();
         build_test_tree(&mut tf_buffer, 0f64);
         build_test_tree(&mut tf_buffer, 1f64);
-        let res = tf_buffer.lookup_transform("camera", "item", rosrust::Time{sec:0, nsec:700_000_000});
+        let res = tf_buffer.lookup_transform(
+            "camera",
+            "item",
+            rosrust::Time {
+                sec: 0,
+                nsec: 700_000_000,
+            },
+        );
         let expected = TransformStamped {
             child_frame_id: "item".to_string(),
             header: Header {
                 frame_id: "camera".to_string(),
-                stamp: rosrust::Time{sec:0, nsec:700_000_000},
-                seq: 1
-            },
-            transform: Transform{
-                rotation: Quaternion{
-                    x: 0f64, y: 0f64, z: 0f64, w: 1f64
+                stamp: rosrust::Time {
+                    sec: 0,
+                    nsec: 700_000_000,
                 },
-                translation: Vector3{
-                    x: 0.5f64, y: -0.7f64, z: 0f64
-                }
-            }
+                seq: 1,
+            },
+            transform: Transform {
+                rotation: Quaternion {
+                    x: 0f64,
+                    y: 0f64,
+                    z: 0f64,
+                    w: 1f64,
+                },
+                translation: Vector3 {
+                    x: 0.5f64,
+                    y: -0.7f64,
+                    z: 0f64,
+                },
+            },
         };
         assert_eq!(res.unwrap(), expected);
     }
@@ -454,22 +543,42 @@ mod test {
         let mut tf_buffer = TfBuffer::new();
         build_test_tree(&mut tf_buffer, 0f64);
         build_test_tree(&mut tf_buffer, 1f64);
-        let res = tf_buffer.lookup_transform_with_time_travel("camera", rosrust::Time{sec:0, nsec: 400_000_000}, "camera", rosrust::Time{sec:0, nsec: 700_000_000}, "item");
+        let res = tf_buffer.lookup_transform_with_time_travel(
+            "camera",
+            rosrust::Time {
+                sec: 0,
+                nsec: 400_000_000,
+            },
+            "camera",
+            rosrust::Time {
+                sec: 0,
+                nsec: 700_000_000,
+            },
+            "item",
+        );
         let expected = TransformStamped {
             child_frame_id: "camera".to_string(),
             header: Header {
                 frame_id: "camera".to_string(),
-                stamp: rosrust::Time{sec:0, nsec:700_000_000},
-                seq: 0
-            },
-            transform: Transform{
-                rotation: Quaternion{
-                    x: 0f64, y: 0f64, z: 0f64, w: 1f64
+                stamp: rosrust::Time {
+                    sec: 0,
+                    nsec: 700_000_000,
                 },
-                translation: Vector3{
-                    x: 0f64, y: 0.3f64, z: 0f64
-                }
-            }
+                seq: 0,
+            },
+            transform: Transform {
+                rotation: Quaternion {
+                    x: 0f64,
+                    y: 0f64,
+                    z: 0f64,
+                    w: 1f64,
+                },
+                translation: Vector3 {
+                    x: 0f64,
+                    y: 0.3f64,
+                    z: 0f64,
+                },
+            },
         };
         assert_approx_eq(res.unwrap(), expected);
     }
@@ -510,12 +619,11 @@ mod test {
 /// it must be scoped to exist through the lifetime of the program. One way to do this is using an `Arc` or `RwLock`.
 pub struct TfListener {
     buffer: Arc<RwLock<TfBuffer>>,
-    static_subscriber: rosrust::Subscriber,
-    dynamic_subscriber:  rosrust::Subscriber,
+    _static_subscriber: rosrust::Subscriber,
+    _dynamic_subscriber: rosrust::Subscriber,
 }
 
 impl TfListener {
-
     /// Create a new TfListener
     pub fn new() -> Self {
         let buff = RwLock::new(TfBuffer::new());
@@ -523,27 +631,44 @@ impl TfListener {
         let r1 = arc.clone();
         let _subscriber_tf = rosrust::subscribe("tf", 100, move |v: TFMessage| {
             r1.write().unwrap().handle_incoming_transforms(v, true);
-        }).unwrap();
+        })
+        .unwrap();
 
         let r2 = arc.clone();
         let _subscriber_tf_static = rosrust::subscribe("tf_static", 100, move |v: TFMessage| {
             r2.write().unwrap().handle_incoming_transforms(v, true);
-        }).unwrap();
+        })
+        .unwrap();
 
         TfListener {
             buffer: arc.clone(),
-            static_subscriber: _subscriber_tf_static,
-            dynamic_subscriber: _subscriber_tf
+            _static_subscriber: _subscriber_tf_static,
+            _dynamic_subscriber: _subscriber_tf,
         }
     }
 
     /// Looks up a transform within the tree at a given time.
-    pub fn lookup_transform(&self, from: &str, to: &str, time: rosrust::Time) ->  Result<TransformStamped,TfError> {
+    pub fn lookup_transform(
+        &self,
+        from: &str,
+        to: &str,
+        time: rosrust::Time,
+    ) -> Result<TransformStamped, TfError> {
         self.buffer.read().unwrap().lookup_transform(from, to, time)
     }
 
     /// Looks up a transform within the tree at a given time.
-    pub fn lookup_transform_with_time_travel(&self, from: &str, time1: rosrust::Time, to: &str, time2: rosrust::Time, fixed_frame: &str) ->  Result<TransformStamped,TfError> {
-        self.buffer.read().unwrap().lookup_transform_with_time_travel(from, time1, to, time2, fixed_frame)
+    pub fn lookup_transform_with_time_travel(
+        &self,
+        from: &str,
+        time1: rosrust::Time,
+        to: &str,
+        time2: rosrust::Time,
+        fixed_frame: &str,
+    ) -> Result<TransformStamped, TfError> {
+        self.buffer
+            .read()
+            .unwrap()
+            .lookup_transform_with_time_travel(from, time1, to, time2, fixed_frame)
     }
 }
