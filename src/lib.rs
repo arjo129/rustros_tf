@@ -70,6 +70,12 @@ fn get_nanos(dur: rosrust::Duration) -> i64 {
     i64::from(dur.sec) * 1_000_000_000 + i64::from(dur.nsec)
 }
 
+fn strip_leading_slash(frame_name: &mut String) {
+    if frame_name.starts_with("/") {
+        frame_name.remove(0);
+    }
+}
+
 fn to_transform_stamped(
     tf: Transform,
     from: std::string::String,
@@ -195,20 +201,25 @@ impl TfBuffer {
     fn add_transform (
             &mut self, transform: &TransformStamped, static_tf: bool) {
         //TODO: Detect is new transform will create a loop
+        let mut frame_id = transform.header.frame_id.clone();
+        let mut child_frame_id = transform.child_frame_id.clone();
+        strip_leading_slash(&mut frame_id);
+        strip_leading_slash(&mut child_frame_id);
         if self.child_transform_index.contains_key(&transform.header.frame_id) {
             let res = self.child_transform_index.get_mut(
-                &transform.header.frame_id.clone()).unwrap();
-            res.insert(transform.child_frame_id.clone());
+                &frame_id.clone()
+            ).unwrap();
+            res.insert(child_frame_id.clone());
         }
         else {
             self.child_transform_index.insert(
-                transform.header.frame_id.clone(), HashSet::new());
+                frame_id.clone(), HashSet::new());
             let res = self.child_transform_index.get_mut(
-                &transform.header.frame_id.clone()).unwrap();
-            res.insert(transform.child_frame_id.clone());
+                &frame_id.clone()).unwrap();
+            res.insert(child_frame_id.clone());
         }
 
-        let key = TfGraphNode{child: transform.child_frame_id.clone(), parent: transform.header.frame_id.clone()};
+        let key = TfGraphNode{child: child_frame_id.clone(), parent: frame_id.clone()};
 
         if self.transform_data.contains_key(&key) {
             let data = self.transform_data.get_mut(&key).unwrap();
